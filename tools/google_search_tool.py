@@ -11,18 +11,7 @@ Dependencies:
 """
 
 from langchain.tools import tool
-import serpapi
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
-
-if not SERPAPI_API_KEY:
-    raise ValueError("SERPAPI_API_KEY environment variable is required but not set")
-
-serpapi_client = serpapi.Client(api_key=SERPAPI_API_KEY)
+from .config import get_serpapi_client
 
 
 @tool
@@ -42,7 +31,6 @@ def google_search_tool(query: str) -> str:
         message if no results found.
 
     Raises:
-        ValueError: If SERPAPI_API_KEY not set.
         Exception: Generic handler for API/network failures.
 
     Example:
@@ -63,7 +51,8 @@ def google_search_tool(query: str) -> str:
             "q": query,
         }
 
-        results = serpapi_client.search(params)
+        client = get_serpapi_client()
+        results = client.search(params)
     except Exception as e:
         print(f"SerpAPI search error: {e}")
 
