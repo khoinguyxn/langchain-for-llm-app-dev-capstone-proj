@@ -1,6 +1,7 @@
 from langchain_ollama import ChatOllama
 from langchain.agents import create_agent
 from tools.google_search_tool import google_search_tool
+from tools.google_scholar_tool import google_scholar_tool
 
 deepseek = ChatOllama(
     model="qwen3:0.6b",
@@ -11,7 +12,7 @@ deepseek = ChatOllama(
 )
 
 
-agent = create_agent(model=deepseek, tools=[google_search_tool])
+agent = create_agent(model=deepseek, tools=[google_search_tool, google_scholar_tool])
 
 response = agent.invoke(
     {

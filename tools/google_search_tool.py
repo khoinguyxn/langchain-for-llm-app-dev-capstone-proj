@@ -42,8 +42,8 @@ def google_search_tool(query: str) -> str:
         message if no results found.
 
     Raises:
-        serpapi.SerpApiClientException: API request failure.
-        KeyError: SERPAPI_API_KEY not set in environment.
+        ValueError: If SERPAPI_API_KEY not set.
+        Exception: Generic handler for API/network failures.
 
     Example:
         >>> result = google_search("Python async programming")
@@ -66,7 +66,7 @@ def google_search_tool(query: str) -> str:
         results = serpapi_client.search(params)
     except Exception as e:
         print(f"SerpAPI search error: {e}")
-        
+
         return f"Search failed: Unexpected error occurred."
 
     sanitized_results = []
@@ -95,15 +95,16 @@ def google_search_tool(query: str) -> str:
 
     # 3. Extract Organic Results (top 3 results)
     if "organic_results" in results and isinstance(results["organic_results"], list):
-        organic = results["organic_results"][:3]
+        top3_or = results["organic_results"][:3]
 
-        for i, result in enumerate(organic, 1):
+        for i, result in enumerate(top3_or, 1):
             if not isinstance(result, dict):
                 continue
 
             title = str(result.get("title", "No title"))[:150]
             snippet = str(result.get("snippet", "No snippet"))[:300]
             link = str(result.get("link", ""))[:200]
+
             sanitized_results.append(
                 f"Result {i}:\nTitle: {title}\nSnippet: {snippet}\nSource: {link}"
             )
