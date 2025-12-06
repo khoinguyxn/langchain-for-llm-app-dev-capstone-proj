@@ -1,6 +1,6 @@
 from langchain_ollama import ChatOllama
 from langchain.agents import create_agent
-from langchain.tools import tool
+from tools.google_search_tool import google_search_tool
 
 deepseek = ChatOllama(
     model="qwen3:0.6b",
@@ -11,18 +11,15 @@ deepseek = ChatOllama(
 )
 
 
-@tool
-def get_weather(location: str) -> str:
-    """Get weather information for a location."""
-    return f"Weather in {location}: Sunny, 72°F"
-
-
-agent = create_agent(model=deepseek, tools=[get_weather])
+agent = create_agent(model=deepseek, tools=[google_search_tool])
 
 response = agent.invoke(
     {
         "messages": [
-            {"role": "user", "content": "What is the weather in Ho Chi Minh City?"}
+            {
+                "role": "user",
+                "content": "What is the current prime minister of Vietnam?",
+            }
         ]
     }
 )
