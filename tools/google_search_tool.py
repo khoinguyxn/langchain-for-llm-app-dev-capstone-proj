@@ -7,11 +7,11 @@ Environment:
     SERPAPI_API_KEY: SerpAPI authentication key (required)
 
 Dependencies:
-    serpapi>=0.1.5, python-dotenv>=1.2.1
+    python-dotenv>=1.2.1
 """
 
 from langchain.tools import tool
-from .config import get_serpapi_client
+from ..libs.serpapi.search import search
 
 
 @tool
@@ -43,16 +43,8 @@ def google_search_tool(query: str) -> str:
     if not query or not query.strip():
         return "No results found for your query."
 
-    query = query.strip()[:500]
-
     try:
-        params = {
-            "engine": "google",
-            "q": query,
-        }
-
-        client = get_serpapi_client()
-        results = client.search(params)
+        results = search(query, engine="google")
     except Exception as e:
         print(f"SerpAPI search error: {e}")
 
