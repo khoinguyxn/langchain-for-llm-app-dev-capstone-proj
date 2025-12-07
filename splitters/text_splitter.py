@@ -9,7 +9,7 @@ from typing import List
 from langchain_core.documents import Document
 
 
-def split_web_content(
+def split_text_content(
     docs: List[Document],
     chunk_size: int = 1500,
     chunk_overlap: int = 200,
@@ -32,7 +32,7 @@ def split_web_content(
         >>> from langchain_community.document_loaders import WebBaseLoader
         >>> loader = WebBaseLoader("https://en.wikipedia.org/wiki/Python")
         >>> docs = loader.load()
-        >>> chunks = split_web_content(docs)
+        >>> chunks = split_text_content(docs)
         >>> print(f"Split {len(docs)} docs into {len(chunks)} chunks")
         >>> print(chunks[0].metadata)  # Preserves source URL
     """
