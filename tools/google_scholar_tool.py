@@ -11,7 +11,7 @@ Dependencies:
 """
 
 from langchain.tools import tool
-from ..libs.serpapi.search import search
+from libs.serpapi.search import search
 
 
 @tool
