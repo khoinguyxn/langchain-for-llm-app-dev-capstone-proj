@@ -11,7 +11,7 @@ Dependencies:
 """
 
 from langchain.tools import tool
-from ..libs.serpapi.search import search
+from libs.serpapi.search import search, sanitize_search_results
 
 
 @tool
@@ -27,14 +27,14 @@ def google_search_tool(query: str) -> str:
 
     Returns:
         Formatted search results with sections for Knowledge Graph, Answer Box,
-        and top 3 organic results (title, snippet, source). Returns fallback
+        and top 3 organic results (title, snippet, source URLs). Returns fallback
         message if no results found.
 
     Raises:
         Exception: Generic handler for API/network failures.
 
     Example:
-        >>> result = google_search("Python async programming")
+        >>> result = google_search_tool.invoke({"query": "Python async programming"})
         >>> print(result)
         Knowledge Graph:
         **Asynchronous I/O** (Programming paradigm)
@@ -43,55 +43,14 @@ def google_search_tool(query: str) -> str:
     if not query or not query.strip():
         return "No results found for your query."
 
-    try:
-        results = search(query, engine="google")
-    except Exception as e:
-        print(f"SerpAPI search error: {e}")
+    # Perform search
+    results = search(query, engine="google")
 
-        return f"Search failed: Unexpected error occurred."
+    # Check for errors
+    if "error" in results:
+        return f"Search failed: {results['error']}"
 
-    sanitized_results = []
+    # Sanitize and format results
+    formatted_output, _ = sanitize_search_results(results)
 
-    # 1. Extract Knowledge Graph (highest quality, direct answer)
-    if "knowledge_graph" in results and isinstance(results["knowledge_graph"], dict):
-        kg = results["knowledge_graph"]
-        title = str(kg.get("title", "N/A"))[:200]
-        kg_info = f"**{title}**"
-
-        if "type" in kg and isinstance(kg["type"], str):
-            kg_info += f" ({str(kg['type'])[:100]})"
-
-        if "description" in kg and isinstance(kg["description"], str):
-            kg_info += f"\n{str(kg['description'])[:500]}"
-
-        sanitized_results.append(f"Knowledge Graph:\n{kg_info}")
-
-    # 2. Extract Answer Box (direct answer from Google)
-    if "answer_box" in results and isinstance(results["answer_box"], dict):
-        answer = results["answer_box"]
-        answer_text = answer.get("answer") or answer.get("snippet") or ""
-
-        if answer_text and isinstance(answer_text, str):
-            sanitized_results.append(f"Direct Answer:\n{str(answer_text)[:300]}")
-
-    # 3. Extract Organic Results (top 3 results)
-    if "organic_results" in results and isinstance(results["organic_results"], list):
-        top3_or = results["organic_results"][:3]
-
-        for i, result in enumerate(top3_or, 1):
-            if not isinstance(result, dict):
-                continue
-
-            title = str(result.get("title", "No title"))[:150]
-            snippet = str(result.get("snippet", "No snippet"))[:300]
-            link = str(result.get("link", ""))[:200]
-
-            sanitized_results.append(
-                f"Result {i}:\nTitle: {title}\nSnippet: {snippet}\nSource: {link}"
-            )
-
-    # 4. Combine all results
-    if sanitized_results:
-        return "\n\n".join(sanitized_results)
-
-    return "No results found for your query."
+    return formatted_output
