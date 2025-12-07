@@ -20,12 +20,12 @@ async def load_web_page(url: str) -> Optional[List[Document]]:
     """
     try:
         loader = WebBaseLoader(url)
-        pages: List[Document] = []
+        docs: List[Document] = []
 
-        async for document in loader.alazy_load():
-            pages.append(document)
+        async for doc in loader.alazy_load():
+            docs.append(doc)
 
-        return pages
+        return docs
     except Exception as e:
         print(f"Failed to load web page {url}: {str(e)[:100]}")
 
