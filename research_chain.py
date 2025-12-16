@@ -1,11 +1,11 @@
 """Research Agent - Mono-agent with multiple search and research tools."""
 
-from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableSerializable
 from langchain_ollama import ChatOllama
 
 from chroma import create_chroma_client
+from models.research_answer import ResearchAnswer
 
 
 def create_research_chain() -> RunnableSerializable:
@@ -21,7 +21,7 @@ def create_research_chain() -> RunnableSerializable:
         max_tokens=1024,
         timeout=None,
         max_retries=2,
-    )
+    ).with_structured_output(ResearchAnswer)
 
     prompt = ChatPromptTemplate.from_template(
         """You are a research assistant with access to PDF research pappers for in-depth summarization.
@@ -43,5 +43,4 @@ def create_research_chain() -> RunnableSerializable:
         }
         | prompt
         | model
-        | StrOutputParser()
     )
