@@ -12,5 +12,5 @@ wheels/
 # Environment variables
 .env
 
-# Vector database files
-chroma_langchain_db/
+# Data directory
+data/

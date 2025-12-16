@@ -38,7 +38,7 @@ def create_chroma_client() -> Chroma:
     embeddings = get_embeddings()
 
     return Chroma(
-        collection_name="my_collection",
+        collection_name="my_research_papers",
         embedding_function=embeddings,
-        persist_directory="./chroma_langchain_db",
+        persist_directory="./data/chroma",
     )
