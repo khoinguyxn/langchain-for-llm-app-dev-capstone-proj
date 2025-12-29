@@ -1,8 +1,10 @@
+import asyncio
+
 from research_chain import create_research_chain
 
 
-def main():
-    chain = create_research_chain()
+async def main():
+    chain = await create_research_chain()
 
     while True:
         question = input("Enter your research question (or 'exit' to quit): ")
@@ -10,10 +12,10 @@ def main():
         if question.lower() == "exit":
             break
 
-        response = chain.invoke(question)
+        response = await chain.ainvoke(question)
 
         print(f"Response: {response}\n")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
