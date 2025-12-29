@@ -7,14 +7,19 @@ async def main():
     chain = await create_research_chain()
 
     while True:
-        question = input("Enter your research question (or 'exit' to quit): ")
+        question = input("\nEnter your research question (or 'exit' to quit): ")
 
         if question.lower() == "exit":
             break
 
-        response = await chain.ainvoke(question)
+        # create_agent returns an agent that expects messages format
+        response = await chain.ainvoke(
+            {"messages": [{"role": "user", "content": question}]}
+        )
 
-        print(f"Response: {response}\n")
+        print(f"\n{'='*80}")
+        print(f"Answer: {response['messages'][-1].content}")
+        print(f"{'='*80}\n")
 
 
 if __name__ == "__main__":

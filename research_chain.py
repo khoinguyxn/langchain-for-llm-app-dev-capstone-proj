@@ -1,22 +1,29 @@
 """Research Agent - Mono-agent with multiple search and research tools."""
 
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough, RunnableSerializable
+from os import getenv
+
+from dotenv import load_dotenv
+from langchain.agents import create_agent
+from langchain.messages import SystemMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables import RunnableSerializable
+from langchain_core.tools import create_retriever_tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 
 from chroma import create_chroma_client
-from models.research_answer import ResearchAnswer
+
+load_dotenv()
 
 
 async def create_research_chain() -> RunnableSerializable:
     """
-    Create a research chain that uses Chroma vector store and Ollama chat model.
+    Create a research chain that uses Chroma vector store and ChatOpenAI model.
 
     Returns:
-        Configured research chain as a RunnableSerializable.
+        AgentExecutor (is a RunnableSerializable) that executes tools.
     """
+
     mcp_clients = MultiServerMCPClient(
         {
             "academia": {
@@ -28,37 +35,44 @@ async def create_research_chain() -> RunnableSerializable:
 
     mcp_tools = await mcp_clients.get_tools()
 
-    model = ChatOllama(
-        model="deepseek-r1:latest",
-        temperature=0,
-        max_tokens=1024,
-        timeout=None,
-        max_retries=2,
-    ).bind_tools(mcp_tools)
-
-    prompt = ChatPromptTemplate.from_template(
-        """You are a research assistant with access to PDF research papers for in-depth summarization.
-        
-        You have access to academia research tools that can:
-        - arxiv_search: Query arXiv with field-specific queries and filters.
-        - arxiv_download: Fetch a paper by ID and convert to structured text (HTML/PDF modes).
-        
-        Always provide clear, concise summary.
-        
-        Context: {context}
-        Question: {question}
-    """
-    )
-
+    # Create retriever tool from Chroma
     chroma = create_chroma_client()
     retriever = chroma.as_retriever(search_kwargs={"k": 5})
 
-    return (
-        {
-            "context": retriever,
-            "question": RunnablePassthrough(),
-        }
-        | prompt
-        | model
-        | StrOutputParser()
+    retriever_tool = create_retriever_tool(
+        retriever,
+        "search_local_papers",
+        "Search through locally stored research papers for relevant context.",
     )
+
+    tools = [retriever_tool, *mcp_tools]
+
+    model = ChatOpenAI(
+        api_key=getenv("OPENROUTER_API_KEY"),
+        base_url="https://openrouter.ai/api/v1",
+        model="mistralai/devstral-2512:free",
+        temperature=0,
+        max_tokens=2048,
+    )
+
+    system_prompt = SystemMessage(
+        content="""
+        You are a research assistant with access to both local PDF research papers and arXiv.
+
+        Available tools:
+        - search_local_papers: Search locally stored research papers
+        - arxiv_search: Query arXiv with field-specific queries
+        - arxiv_download: Fetch papers by ID and convert to text
+        - And 10+ other academia tools
+
+        Strategy:
+        1. Search local papers first for relevant context
+        2. Use arXiv search if you need additional papers
+        3. Provide clear, concise summaries
+        """
+    )
+
+    # Create the agent (this returns a Runnable)
+    agent = create_agent(model=model, tools=tools, system_prompt=system_prompt)
+
+    return agent
