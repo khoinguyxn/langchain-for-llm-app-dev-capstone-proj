@@ -1,6 +1,10 @@
 import asyncio
 
+from langchain_core.runnables import RunnableConfig
+
 from research_chain import create_research_chain
+
+RUNNABLE_CONFIG: RunnableConfig = {"configurable": {"thread_id": 1}}
 
 
 async def main():
@@ -14,7 +18,7 @@ async def main():
 
         # create_agent returns an agent that expects messages format
         response = await chain.ainvoke(
-            {"messages": [{"role": "user", "content": question}]}
+            {"messages": [{"role": "user", "content": question}]}, RUNNABLE_CONFIG
         )
 
         print(f"\n{'='*80}")

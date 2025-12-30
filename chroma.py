@@ -5,7 +5,6 @@ Centralizes Chroma client initialization to avoid code duplication.
 """
 
 from langchain_chroma import Chroma
-from langchain_core.documents import Document
 from langchain_ollama import OllamaEmbeddings
 
 
@@ -22,7 +21,7 @@ def get_embeddings():
         Embedding function instance.
     """
     return OllamaEmbeddings(
-        model="nomic-embed-text",
+        model="qwen3-embedding:0.6b",
     )
 
 

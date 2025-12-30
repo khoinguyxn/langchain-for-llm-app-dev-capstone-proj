@@ -26,7 +26,7 @@ def store_research_papers():
         all_documents.extend(documents)
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,  # Safe limit for nomic-embed-text
+        chunk_size=1024,
         chunk_overlap=100,
     )
 

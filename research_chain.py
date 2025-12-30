@@ -4,12 +4,13 @@ from os import getenv
 
 from dotenv import load_dotenv
 from langchain.agents import create_agent
+from langchain.agents.middleware import SummarizationMiddleware
 from langchain.messages import SystemMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableSerializable
 from langchain_core.tools import create_retriever_tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.memory import InMemorySaver
 
 from chroma import create_chroma_client
 
@@ -23,7 +24,7 @@ async def create_research_chain() -> RunnableSerializable:
     Returns:
         AgentExecutor (is a RunnableSerializable) that executes tools.
     """
-
+    # Load MCP tools
     mcp_clients = MultiServerMCPClient(
         {
             "academia": {
@@ -47,6 +48,7 @@ async def create_research_chain() -> RunnableSerializable:
 
     tools = [retriever_tool, *mcp_tools]
 
+    # Initialize LLM model
     model = ChatOpenAI(
         api_key=getenv("OPENROUTER_API_KEY"),
         base_url="https://openrouter.ai/api/v1",
@@ -55,6 +57,7 @@ async def create_research_chain() -> RunnableSerializable:
         max_tokens=2048,
     )
 
+    # Define system prompt
     system_prompt = SystemMessage(
         content="""
         You are a research assistant with access to both local PDF research papers and arXiv.
@@ -72,7 +75,13 @@ async def create_research_chain() -> RunnableSerializable:
         """
     )
 
-    # Create the agent (this returns a Runnable)
-    agent = create_agent(model=model, tools=tools, system_prompt=system_prompt)
+    # Create the agent
+    agent = create_agent(
+        model=model,
+        tools=tools,
+        system_prompt=system_prompt,
+        checkpointer=InMemorySaver(),
+        middleware=[SummarizationMiddleware(model=model, trigger=("tokens", 4000))],
+    )
 
     return agent
