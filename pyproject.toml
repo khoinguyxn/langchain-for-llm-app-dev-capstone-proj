@@ -15,6 +15,7 @@ dependencies = [
     "langchain-openai>=1.1.6",
     "langchain-text-splitters>=1.0.0",
     "langgraph>=1.0.4",
+    "langsmith>=0.4.56",
     "pydantic>=2.12.5",
     "pypdf>=6.4.2",
     "python-dotenv>=1.2.1",

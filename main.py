@@ -1,12 +1,16 @@
 import asyncio
+from os import getenv
 
+from dotenv import load_dotenv
 from langchain_core.runnables import RunnableConfig
+from langsmith import traceable
 
 from research_chain import create_research_chain
 
 RUNNABLE_CONFIG: RunnableConfig = {"configurable": {"thread_id": 1}}
 
 
+@traceable
 async def main():
     chain = await create_research_chain()
 
@@ -27,4 +31,6 @@ async def main():
 
 
 if __name__ == "__main__":
+    load_dotenv()
+
     asyncio.run(main())
