@@ -11,6 +11,7 @@ from langgraph.func import entrypoint, task
 from langsmith import traceable
 
 from chroma import create_chroma_client
+from models.research_answer import ResearchAnswer
 
 SYSTEM_PROMPT = """You are a research assistant with access to both local PDF research papers and arXiv.
 
@@ -101,9 +102,78 @@ async def call_tools(ai_message: AIMessage) -> List[ToolMessage]:
     return tool_messages
 
 
+@task
+@traceable(run_type="llm")
+async def format_final_answer(
+    conversation_history: List[BaseMessage],
+) -> ResearchAnswer:
+    """
+    Format the final answer into structured ResearchAnswer format.
+
+    Args:
+        conversation_history: Full conversation including tool results
+
+    Returns:
+        Structured research answer with citations
+    """
+    llm = ChatOpenAI(
+        api_key=getenv("OPENROUTER_API_KEY"),
+        base_url=getenv("OPENROUTER_BASE_URL"),
+        model=getenv("OPENROUTER_MODEL"),
+        temperature=0,
+        max_tokens=2048,
+        model_kwargs={"response_format": {"type": "json_object"}},
+    ).with_structured_output(ResearchAnswer, include_raw=False)
+
+    formatting_prompt = SystemMessage(
+        content="""Based on the conversation and research gathered, format a final research answer.
+
+You MUST respond with valid JSON ONLY. Do not include markdown code blocks or any other text.
+
+Required JSON structure (remove all comments before responding):
+{
+  "answer": "your comprehensive research answer here",
+  "confidence_score": 0.85,
+  "citations": [
+    {
+      "title": "Paper Title",
+      "authors": ["Author One", "Author Two"],
+      "year": 2024,
+      "doi": "10.1234/example",
+      "url": "https://arxiv.org/abs/1234.5678",
+      "page_numbers": null
+    }
+  ]
+}
+
+Rules:
+- "answer" must be a string with the research summary
+- "confidence_score" must be a float between 0.0 and 1.0
+- "citations" must be an array of citation objects
+- "authors" must be an array of strings, NOT a single string
+- Use null for missing fields (year, page_numbers, doi, url)
+- Extract citations from arXiv search results in the conversation
+- For arXiv papers, URL format: https://arxiv.org/abs/{arxiv_id}
+"""
+    )
+
+    try:
+        result = await llm.ainvoke([formatting_prompt] + conversation_history)
+        return result
+    except Exception as e:
+        # Fallback with minimal structure
+        print(f"Warning: Structured output failed: {e}")
+
+        return ResearchAnswer(
+            answer="Unable to format structured answer due to parsing error. Please check the conversation history.",
+            confidence_score=0.0,
+            citations=[],
+        )
+
+
 @entrypoint(checkpointer=False)
 @traceable(run_type="chain")
-async def research_agent(messages: List[BaseMessage]) -> AIMessage:
+async def research_agent(messages: List[BaseMessage]) -> ResearchAnswer:
     """
     Research agent entrypoint using LangGraph Functional API.
 
@@ -111,7 +181,7 @@ async def research_agent(messages: List[BaseMessage]) -> AIMessage:
         messages: List of messages (conversation history)
 
     Returns:
-        Final AI message response
+        Structured research answer with citations
     """
     MAX_ITERATIONS = 10
 
@@ -119,9 +189,12 @@ async def research_agent(messages: List[BaseMessage]) -> AIMessage:
         # Call model
         ai_message = await call_model(messages)
 
-        # If no tool calls, return final answer
+        # If no tool calls, format and return final answer
         if not hasattr(ai_message, "tool_calls") or not ai_message.tool_calls:
-            return ai_message
+            # Add final AI message to history
+            messages.append(ai_message)
+            # Format into structured output
+            return await format_final_answer(messages)
 
         # Execute tools
         tool_messages = await call_tools(ai_message)
@@ -130,4 +203,11 @@ async def research_agent(messages: List[BaseMessage]) -> AIMessage:
         messages.append(ai_message)
         messages.extend(tool_messages)
 
-    return AIMessage(content="Max iterations reached.")
+    # Max iterations - still format what we have
+    messages.append(
+        AIMessage(
+            content="Max iterations reached. Providing best answer with available information."
+        )
+    )
+
+    return await format_final_answer(messages)

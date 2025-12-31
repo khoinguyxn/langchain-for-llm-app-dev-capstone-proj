@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -9,10 +9,18 @@ class Citation(BaseModel):
     """
 
     title: str = Field(description="Title of the research paper.")
-    authors: List[str] = Field(description="List of authors of the research paper.")
-    year: int = Field(description="Year of publication.")
-    doi: str = Field(description="Digital Object Identifier of the research paper.")
-    url: str = Field(description="URL to access the research paper.")
-    page_numbers: int = Field(
-        description="Page numbers referenced in the research paper."
+    authors: List[str] = Field(
+        default_factory=list, description="List of authors of the research paper."
+    )
+    year: Optional[int] = Field(
+        default=None, description="Year of publication (if available)."
+    )
+    doi: Optional[str] = Field(
+        default=None,
+        description="Digital Object Identifier (DOI) of the research paper.",
+    )
+    url: Optional[str] = Field(default=None, description="URL to access the research paper.")
+    page_numbers: Optional[int] = Field(
+        default=None,
+        description="Page numbers referenced in the research paper (if available).",
     )

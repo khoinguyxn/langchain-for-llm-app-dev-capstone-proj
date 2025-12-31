@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
 from langsmith import traceable
 
-from research_chain import init_tools, research_agent
+from models.research_answer import ResearchAnswer
+from research_agent import init_tools, research_agent
 
 
 @traceable
@@ -20,10 +21,19 @@ async def main():
 
         messages = [HumanMessage(content=question)]
 
-        response = await research_agent.ainvoke(messages)
+        response: ResearchAnswer = await research_agent.ainvoke(messages)
 
         print(f"\n{'='*80}")
-        print(f"Response: {response.content}")
+        print(f"Response:\n{response.answer}\n")
+        print(f"Confidence: {response.confidence_score:.2%}\n")
+        print(f"Citations: ({len(response.citations)}):")
+
+        for i, citation in enumerate(response.citations, 1):
+            print(f"  [{i}] {citation.title} ({citation.year})")
+            print(f"      Authors: {', '.join(citation.authors)}")
+            print(f"      DOI: {citation.doi}")
+            print(f"      URL: {citation.url}\n")
+
         print(f"{'='*80}\n")
 
 

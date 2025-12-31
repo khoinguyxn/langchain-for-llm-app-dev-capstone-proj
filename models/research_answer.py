@@ -14,4 +14,4 @@ class ResearchAnswer(BaseModel):
     citations: List[Citation] = Field(
         description="List of citations supporting the research answer."
     )
-    confidence_score: str = Field(description="Confidence level: high, medium, or low")
+    confidence_score: float = Field(description="Confidence level from 0 to 1.")
