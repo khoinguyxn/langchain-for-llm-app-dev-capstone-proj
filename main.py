@@ -1,18 +1,16 @@
 import asyncio
-from os import getenv
 
 from dotenv import load_dotenv
-from langchain_core.runnables import RunnableConfig
+from langchain_core.messages import HumanMessage
 from langsmith import traceable
 
-from research_chain import create_research_chain
-
-RUNNABLE_CONFIG: RunnableConfig = {"configurable": {"thread_id": 1}}
+from research_chain import init_tools, research_agent
 
 
 @traceable
 async def main():
-    chain = await create_research_chain()
+    # Initialize tools globally in research_chain module
+    await init_tools()
 
     while True:
         question = input("\nEnter your research question (or 'exit' to quit): ")
@@ -20,13 +18,12 @@ async def main():
         if question.lower() == "exit":
             break
 
-        # create_agent returns an agent that expects messages format
-        response = await chain.ainvoke(
-            {"messages": [{"role": "user", "content": question}]}, RUNNABLE_CONFIG
-        )
+        messages = [HumanMessage(content=question)]
+
+        response = await research_agent.ainvoke(messages)
 
         print(f"\n{'='*80}")
-        print(f"Answer: {response['messages'][-1].content}")
+        print(f"Response: {response.content}")
         print(f"{'='*80}\n")
 
 
