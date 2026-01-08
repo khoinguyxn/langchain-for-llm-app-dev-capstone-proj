@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "theme": "opencode",
+  "autoupdate": true,
+  "mcp": {
+    "livekit": {
+      "type": "remote",
+      "url": "https://docs.livekit.io/mcp",
+      "enabled": true
+    },
+    "langchain": {
+      "type": "remote",
+      "url": "https://docs.langchain.com/mcp",
+      "enabled": true
+    }
+  }
+}
