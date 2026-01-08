@@ -1,9 +1,15 @@
 """Research Agent - LangGraph Functional API implementation."""
 
 from os import getenv
-from typing import List
+from typing import List, Union
 
-from langchain_core.messages import AIMessage, BaseMessage, SystemMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from langchain_core.tools import BaseTool, create_retriever_tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
@@ -28,6 +34,42 @@ Strategy:
 """
 
 TOOLS: List[BaseTool] = []
+
+
+def normalize_messages(
+    messages: Union[List[BaseMessage], List[dict], List[Union[BaseMessage, dict]]],
+) -> List[BaseMessage]:
+    """
+    Normalize messages to BaseMessage instances.
+
+    Handles both BaseMessage objects and dicts with "role" and "content" keys.
+    """
+    normalized = []
+
+    print(f"Normalizing messages: {messages}")
+
+    for msg in messages:
+        if isinstance(msg, BaseMessage):
+            normalized.append(msg)
+        elif isinstance(msg, dict):
+            # Convert dict to appropriate message type
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+
+            match role:
+                case "system":
+                    normalized.append(SystemMessage(content=content))
+                case "assistant":
+                    normalized.append(AIMessage(content=content))
+                case "user":
+                    normalized.append(HumanMessage(content=content))
+                case _:
+                    normalized.append(HumanMessage(content=content))
+        else:
+            # If it's something else, try to convert to string and make HumanMessage
+            normalized.append(HumanMessage(content=str(msg)))
+
+    return normalized
 
 
 @traceable(run_type="tool")
@@ -58,8 +100,10 @@ async def init_tools() -> None:
 
 @task
 @traceable(run_type="llm")
-async def call_model(messages: List[BaseMessage]) -> AIMessage:
-    """Call LLM with tools bound."""
+async def call_model(messages: Union[List[BaseMessage], List[dict]]) -> AIMessage:
+    """Call LLM with tools bound. Accepts both BaseMessage objects and dicts."""
+    normalized_messages = normalize_messages(messages)
+
     llm = ChatOpenAI(
         api_key=getenv("OPENROUTER_API_KEY"),
         base_url=getenv("OPENROUTER_BASE_URL"),
@@ -68,7 +112,9 @@ async def call_model(messages: List[BaseMessage]) -> AIMessage:
         max_tokens=2048,
     ).bind_tools(TOOLS)
 
-    return await llm.ainvoke([SystemMessage(content=SYSTEM_PROMPT)] + messages)
+    return await llm.ainvoke(
+        [SystemMessage(content=SYSTEM_PROMPT)] + normalized_messages
+    )
 
 
 @task
@@ -173,16 +219,20 @@ Rules:
 
 @entrypoint(checkpointer=False)
 @traceable(run_type="chain")
-async def research_agent(messages: List[BaseMessage]) -> ResearchAnswer:
+async def research_agent(
+    messages: Union[List[BaseMessage], List[dict]],
+) -> ResearchAnswer:
     """
     Research agent entrypoint using LangGraph Functional API.
 
     Args:
-        messages: List of messages (conversation history)
+        messages: List of messages (conversation history) - can be BaseMessage objects or dicts
 
     Returns:
         Structured research answer with citations
     """
+    messages = normalize_messages(messages)
+
     MAX_ITERATIONS = 10
 
     for _ in range(MAX_ITERATIONS):
